@@ -6,22 +6,25 @@ namespace JP
 {
     public class MouseHandler : MonoBehaviour
     {
-        Board ClickBlock;
-        LayerMask layerMask;
+        Board firstClickBlock;
+        Board secondClickBlock;
+        BoardPosition firstBoardPosition;
+        BoardPosition secondBoardPosition;
+
         bool isDrag;
 
-        private void Update()
+        public void MouseUpdate()
         {
             MouseButtonDownCheck();
             MouseDragCheck();
             MouseButtonUpCheck();
-        }      
+        }
 
         void MouseButtonDownCheck()
         {
             if(Input.GetMouseButtonDown(0))
             {
-                layerMask = LayerMask.GetMask("Board");
+                LayerMask layerMask = LayerMask.GetMask("Board");
 
                 RaycastHit2D hit = Physics2D.GetRayIntersection(Camera.main.ScreenPointToRay(Input.mousePosition));
 
@@ -31,7 +34,8 @@ namespace JP
                     return;
                 }
 
-                ClickBlock = hit.transform.GetComponent<Board>();
+                firstClickBlock = hit.transform.GetComponent<Board>();
+                firstBoardPosition = firstClickBlock.MyBoardPosition;
                 isDrag = true;
             }
         }
@@ -40,18 +44,21 @@ namespace JP
         {
             if (isDrag)
             {
-                layerMask = LayerMask.GetMask("Board");
+                LayerMask layerMask = LayerMask.GetMask("Board");
                 RaycastHit2D hit = Physics2D.GetRayIntersection(Camera.main.ScreenPointToRay(Input.mousePosition));
 
                 //Board가 아니라면 패스
-                if (!hit || ClickBlock.transform == hit.transform)
+                if (!hit || firstClickBlock.transform == hit.transform)
                 {
                     return;
                 }
 
                 isDrag = false;
-                ClickBlock.SwapBlock(hit.transform.GetComponent<Board>());
-                ClickBlock = null;
+
+                secondClickBlock = hit.transform.GetComponent<Board>();
+                secondBoardPosition = secondClickBlock.MyBoardPosition;
+                firstClickBlock.SwapBlock(secondClickBlock);
+                firstClickBlock = null;
             }
         }
 
@@ -61,6 +68,16 @@ namespace JP
             {
                 isDrag = false;
             }
+        }
+
+        public BoardPosition GetFirstBoardPosition()
+        {
+            return firstBoardPosition;
+        }
+
+        public BoardPosition GetSecondBoardPosition()
+        {
+            return secondBoardPosition;
         }
     }
 }

@@ -6,18 +6,23 @@ namespace JP
 {
     public class Notice : MonoBehaviour, ISubject
     {
-        List<IObserver> observers = new();
+        List<IObserver> observers;
 
-        public void notifyObserver(string msg)
+        public void notifyObserver(string msg, BoardPosition boardPosition)
         {
             for(int i = 0; i < observers.Count; ++i)
             {
-                observers[i].recive(msg);
+                observers[i].recive(msg, boardPosition);
             }
         }
 
         public void registerObserver(IObserver observer)
         {
+            if (observers == null)
+            {
+                observers = new();
+            }
+
             observers.Add(observer);
         }
 

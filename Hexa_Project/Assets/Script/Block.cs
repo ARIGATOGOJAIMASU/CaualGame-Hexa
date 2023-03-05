@@ -6,11 +6,25 @@ namespace JP
 {
     public enum BlockType { Red, Blue, Green, Yellow, Orange, Purple }
 
+    public struct NeviInfo
+    {
+        public NeviInfo(Vector3 targetPosition, BoardPosition boardPosition)
+        {
+            this.targetPosition = targetPosition;
+            this.boardPosition = boardPosition;
+        }
+
+        public Vector3 targetPosition;
+        public BoardPosition boardPosition;
+    }
+
     public class Block : MonoBehaviour
     {
         [SerializeField] BlockType myType;
         [SerializeField] float MoveSpeed;
 
+        Board currentBoard;
+        public Board preveBoard;
         Transform trans;
         Notice notice;
 
@@ -26,14 +40,15 @@ namespace JP
             this.notice = notice;
         }
 
+        public void SetBoard(Board board)
+        {
+            preveBoard = currentBoard;
+            currentBoard = board;
+        }
+
         public void Move(Vector3 position)
         {
             StartCoroutine(MoveBlock(position));
-        }
-
-        public void DeleteBlock()
-        {
-
         }
 
         IEnumerator MoveBlock(Vector3 position)
@@ -48,8 +63,9 @@ namespace JP
                 }
                 else
                 {
-                    notice.notifyObserver("MoveArrive");
-                    break;
+                    currentBoard.ArriveBlock();
+                    notice.notifyObserver("MoveArrive", currentBoard.MyBoardPosition);
+                    yield break;
                 }
             }
         }

@@ -8,11 +8,11 @@ namespace JP
     {
         void registerObserver(IObserver observer);
         void removeObserver(IObserver observer);
-        void notifyObserver(string msg);
+        void notifyObserver(string msg, BoardPosition boardPosition);
     }
 
     public interface IObserver
     {
-        void recive(string msg);
+        void recive(string msg, BoardPosition boardPosition);
     }
 }

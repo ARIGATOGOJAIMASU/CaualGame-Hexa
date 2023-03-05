@@ -131,7 +131,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   myType: 3
-  MoveSpeed: 30
+  MoveSpeed: 40
+  preveBoard: {fileID: 0}
 --- !u!114 &-5796707036406182587
 MonoBehaviour:
   m_ObjectHideFlags: 0
