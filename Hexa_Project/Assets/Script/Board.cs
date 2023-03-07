@@ -5,35 +5,26 @@ using UnityEngine;
 namespace JP
 {
     public enum AroundPosition { RightUp, Up, LeftUp, LeftDown, Down, RightDown }
-    public enum BoardState { ArriveWait, KeepBlock, Moved, Empty }
-
-    [System.Serializable]
-    public struct BoardPosition
-    {
-        public BoardPosition(int x, int y)
-        {
-            this.x = x;
-            this.y = y;
-        }
-
-        public int x;
-        public int y;
-    }
+    public enum BoardState { ArriveWait, KeepBlock, Route, Empty }
 
     public class Board : MonoBehaviour
     {
-        [SerializeField]Block myBlock;
-        Transform trans;
-        BoardPosition boardPosition = new();
-        public Dictionary<AroundPosition, Board> AroundBoard = new();
-        [SerializeField] BoardState boardState;
+        Vector2 boardPosition;
+        BoardState boardState;
+
+        //주변보드들
+        Dictionary<AroundPosition, Board> AroundBoard = new();
+        
+        //가진 블럭
+        Block myBlock;
         bool isCain;
 
-        private void Start()
+        public void AroundAdd(AroundPosition aroundPosition, Board board)
         {
-            trans = GetComponent<Transform>();
+            AroundBoard.Add(aroundPosition, board);
         }
 
+        //블럭을 해당 보드위치로 이동
         public void MoveBlock(Block block)
         {
             block.SetBoard(this);
@@ -42,13 +33,14 @@ namespace JP
             myBlock.Move(transform.position + new Vector3(0, 0, -1));
         }
 
+        //다른 보드에 자신의 블럭을 넘김
         public void PassBlock(Board target)
         {
             target.MoveBlock(myBlock);
-            myBlock = null;
             boardState = BoardState.Empty;
         }
 
+        //블럭이 도착할때
         public void ArriveBlock()
         {
             boardState = BoardState.KeepBlock;
@@ -69,13 +61,10 @@ namespace JP
             return boardState;
         }
 
-        public BoardPosition MyBoardPosition 
+        public Vector2 MyBoardPosition 
         { 
             get { return boardPosition; }
-            set 
-            { 
-                boardPosition = value;
-            }
+            set { boardPosition = value;}
         }
 
         void RemoveBlock()
@@ -85,17 +74,20 @@ namespace JP
             myBlock = null;
         }
 
-        //자신한테 온 블럭이 이 위치가 맞는지 확인
-        public bool CheckKeepBlock()
+        public void SwapBlock(Board board)
         {
-            if(!(boardState == BoardState.KeepBlock))
+            //자신 주변에 있는 Board인지 확인
+            if (!AroundBoard.ContainsValue(board))
             {
-                return false;
+                return;
             }
 
-            return true;
+            Block tempBlock = board.GetBlock();
+            board.MoveBlock(myBlock);
+            MoveBlock(tempBlock);
         }
 
+        //자신의 아래에 있는 보드중 전달할 수 있는 보드를 찾음
         public void CheckVerticalMove()
         {
             if(boardState != BoardState.KeepBlock)
@@ -103,7 +95,7 @@ namespace JP
                 return;
             }
 
-            //아래에 블록이 없으면 들어감
+            //타겟을 찾아서 블럭 전달
             if(AroundBoard.ContainsKey(AroundPosition.Down) && 
                 AroundBoard[AroundPosition.Down].boardState != BoardState.ArriveWait &&
                 AroundBoard[AroundPosition.Down].boardState != BoardState.KeepBlock)
@@ -113,22 +105,23 @@ namespace JP
             }
         }
 
+        //블럭을 전달 가능한 보드를 재귀를 통해 검색
         public Board SearchTargetBlock(AroundPosition aroundPosition)
         {
-            Board target = this;
-
             if(!AroundBoard.ContainsKey(aroundPosition) || 
                 AroundBoard[AroundPosition.Down].boardState == BoardState.KeepBlock ||
                 AroundBoard[AroundPosition.Down].boardState == BoardState.ArriveWait)
             {
-                return target;
+                return this;
             }
 
-            boardState = BoardState.Moved;
+            //지나가는 길 표시
+            boardState = BoardState.Route;
 
             return AroundBoard[AroundPosition.Down].SearchTargetBlock(aroundPosition);
         }
 
+        //대각선 계산
         public void CheckNextMove()
         {
             if (boardState != BoardState.KeepBlock)
@@ -138,20 +131,13 @@ namespace JP
 
             if (CheckUpEmpty())
             {
-                if (AroundBoard.ContainsKey(AroundPosition.Down) &&
-                    AroundBoard[AroundPosition.Down].boardState == BoardState.Empty)
-                {
-                    PassBlock(AroundBoard[AroundPosition.Down]);
-                }
-                else if (AroundBoard.ContainsKey(AroundPosition.LeftDown) &&
-                   AroundBoard[AroundPosition.LeftDown].boardState == BoardState.Empty &&
+                if (CheckAround(AroundPosition.LeftDown, BoardState.Empty) &&
                    AroundBoard[AroundPosition.LeftDown].CheckUpEmpty())
                 {
 
                     PassBlock(AroundBoard[AroundPosition.LeftDown]);
                 }
-                else if (AroundBoard.ContainsKey(AroundPosition.RightDown) &&
-                    AroundBoard[AroundPosition.RightDown].boardState == BoardState.Empty &&
+                else if (CheckAround(AroundPosition.RightDown, BoardState.Empty) &&
                      AroundBoard[AroundPosition.RightDown].CheckUpEmpty())
                 {
                     PassBlock(AroundBoard[AroundPosition.RightDown]);
@@ -159,6 +145,7 @@ namespace JP
             }
         }
 
+        //위에 보드가 있는지 확인
         public bool CheckUpEmpty()
         {
             if(!AroundBoard.ContainsKey(AroundPosition.Up) ||
@@ -170,34 +157,15 @@ namespace JP
             return false;
         }
 
-        public void SwapBlock(Board board)
+        public bool CheckAround(AroundPosition aroundPosition, BoardState boardState)
         {
-            //자신 주변에 있는 Board인지 확인
-            if(!aroundCheck(board.MyBoardPosition))
+            if(AroundBoard.ContainsKey(aroundPosition) &&
+                AroundBoard[aroundPosition].boardState == boardState)
             {
-                return;
-            }
-
-            Block tempBlock = board.GetBlock();
-            board.MoveBlock(myBlock);
-            MoveBlock(tempBlock);
-        }
-
-        public bool aroundCheck(BoardPosition boardPosition)
-        {
-            //행을 비교하여 근접한지 확인
-            if (Mathf.Abs(this.boardPosition.x - boardPosition.x) > 1)
-            {
-                return false;
-            }
-
-            //열을 비교하여 근접한지 확인
-            if(Mathf.Abs(this.boardPosition.y - boardPosition.y) > 1)
-            {
-                return false;
+                return true;
             }
             
-            return true;
+            return false;
         }
 
         public int CheckCainNum()
@@ -228,6 +196,41 @@ namespace JP
             return cainNum;
         }
 
+        public int CheckVerticalNum()
+        {
+            if (boardState != BoardState.KeepBlock)
+            {
+                return 0;
+            }
+
+            //자신을 포함해 몇개인지 확인
+            return 1 + CheckUpVertical(0, GetBlockType()) + CheckDownVertical(0, GetBlockType());
+        }
+
+        int CheckUpVertical(int verticalNum, BlockType blockType)
+        {
+            if (CheckAround(AroundPosition.Up, BoardState.KeepBlock) &&
+               AroundBoard[AroundPosition.Up].GetBlockType() == blockType)
+            {
+                ++verticalNum;
+                verticalNum = AroundBoard[AroundPosition.Up].CheckUpVertical(verticalNum, blockType);
+            }
+
+            return verticalNum;
+        }
+
+        int CheckDownVertical(int verticalNum, BlockType blockType)
+        {
+            if (CheckAround(AroundPosition.Down, BoardState.KeepBlock) &&
+               AroundBoard[AroundPosition.Down].GetBlockType() == blockType)
+            {
+                ++verticalNum;
+                verticalNum = AroundBoard[AroundPosition.Down].CheckDownVertical(verticalNum, blockType);
+            }
+
+            return verticalNum;
+        }
+
         public void RemoveStart()
         {
             RemoveBlock(GetBlockType());
@@ -235,7 +238,7 @@ namespace JP
 
         void RemoveBlock(BlockType blockType)
         {
-            if (boardState == BoardState.KeepBlock 
+            if (boardState == BoardState.KeepBlock
                 && isCain == false
                 && blockType == GetBlockType())
             {
@@ -248,42 +251,6 @@ namespace JP
 
                 RemoveBlock();
             }
-        }
-
-        public int CheckVerticalNum()
-        {
-            if (boardState != BoardState.KeepBlock)
-            {
-                return 0;
-            }
-
-            return CheckUpVertical(1, GetBlockType()) + CheckDownVertical(0, GetBlockType());
-        }
-
-        int CheckUpVertical(int verticalNum, BlockType blockType)
-        {
-            if (AroundBoard.ContainsKey(AroundPosition.Up) &&
-               AroundBoard[AroundPosition.Up].boardState == BoardState.KeepBlock &&
-               AroundBoard[AroundPosition.Up].GetBlockType() == blockType)
-            {
-                ++verticalNum;
-                verticalNum = AroundBoard[AroundPosition.Up].CheckUpVertical(verticalNum, blockType);
-            }
-
-            return verticalNum;
-        }
-
-        int CheckDownVertical(int verticalNum, BlockType blockType)
-        {
-            if (AroundBoard.ContainsKey(AroundPosition.Down) &&
-               AroundBoard[AroundPosition.Down].boardState == BoardState.KeepBlock &&
-               AroundBoard[AroundPosition.Down].GetBlockType() == blockType)
-            {
-                ++verticalNum;
-                verticalNum = AroundBoard[AroundPosition.Down].CheckDownVertical(verticalNum, blockType);
-            }
-
-            return verticalNum;
         }
 
         public void ReleseCain()

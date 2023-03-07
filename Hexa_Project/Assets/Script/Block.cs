@@ -4,19 +4,7 @@ using UnityEngine;
 
 namespace JP
 {
-    public enum BlockType { Red, Blue, Green, Yellow, Orange, Purple }
-
-    public struct NeviInfo
-    {
-        public NeviInfo(Vector3 targetPosition, BoardPosition boardPosition)
-        {
-            this.targetPosition = targetPosition;
-            this.boardPosition = boardPosition;
-        }
-
-        public Vector3 targetPosition;
-        public BoardPosition boardPosition;
-    }
+    public enum BlockType { Red, Blue, Green, Yellow, Orange, Purple, Block_End }
 
     public class Block : MonoBehaviour
     {
@@ -24,7 +12,8 @@ namespace JP
         [SerializeField] float MoveSpeed;
 
         Board currentBoard;
-        public Board preveBoard;
+
+        //Conponent;
         Transform trans;
         Notice notice;
 
@@ -35,14 +24,14 @@ namespace JP
             trans = GetComponent<Transform>();
         }
 
-        public void SetNotice(Notice notice)
+        public void SetNotice(IObserver observer)
         {
-            this.notice = notice;
+            notice = GetComponent<Notice>();
+            notice.registerObserver(observer);
         }
 
         public void SetBoard(Board board)
         {
-            preveBoard = currentBoard;
             currentBoard = board;
         }
 
@@ -57,6 +46,7 @@ namespace JP
             {
                 yield return null;
 
+                //목표 보드 도달시 StageController에게 이벤트 전달
                 if(trans.position != position)
                 {
                     trans.position = Vector3.MoveTowards(trans.position, position, MoveSpeed * Time.deltaTime);

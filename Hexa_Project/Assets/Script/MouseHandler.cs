@@ -8,8 +8,8 @@ namespace JP
     {
         Board firstClickBlock;
         Board secondClickBlock;
-        BoardPosition firstBoardPosition;
-        BoardPosition secondBoardPosition;
+        Vector2 firstBoardPosition;
+        Vector2 secondBoardPosition;
 
         bool isDrag;
 
@@ -24,8 +24,6 @@ namespace JP
         {
             if(Input.GetMouseButtonDown(0))
             {
-                LayerMask layerMask = LayerMask.GetMask("Board");
-
                 RaycastHit2D hit = Physics2D.GetRayIntersection(Camera.main.ScreenPointToRay(Input.mousePosition));
 
                 //Board가 아니라면 패스
@@ -44,7 +42,6 @@ namespace JP
         {
             if (isDrag)
             {
-                LayerMask layerMask = LayerMask.GetMask("Board");
                 RaycastHit2D hit = Physics2D.GetRayIntersection(Camera.main.ScreenPointToRay(Input.mousePosition));
 
                 //Board가 아니라면 패스
@@ -57,6 +54,7 @@ namespace JP
 
                 secondClickBlock = hit.transform.GetComponent<Board>();
                 secondBoardPosition = secondClickBlock.MyBoardPosition;
+
                 firstClickBlock.SwapBlock(secondClickBlock);
                 firstClickBlock = null;
             }
@@ -70,12 +68,12 @@ namespace JP
             }
         }
 
-        public BoardPosition GetFirstBoardPosition()
+        public Vector2 GetFirstBoardPosition()
         {
             return firstBoardPosition;
         }
 
-        public BoardPosition GetSecondBoardPosition()
+        public Vector2 GetSecondBoardPosition()
         {
             return secondBoardPosition;
         }

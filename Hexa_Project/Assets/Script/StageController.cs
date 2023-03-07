@@ -9,28 +9,35 @@ namespace JP
     {
         enum StageState { Start, Choice, ReChange, Wait, GameOver }
 
-        CreateBoardModule CreateBoardModule;
+        //Component
+        CreatorBoard createBoardModule;
         MouseHandler mouseHandler;
+        BlockPactory blockPactory;
+        UI_Controller uI_Controller;
 
-        [SerializeField] List<List<Board>> boards = new();
-        [SerializeField] List<GameObject> bloks;
+        int leftMove = 20;
+        int currentScore = 0;
+
+        List<List<Board>> boards = new();
         StageState currentStage;
 
         int MoveCount;
 
         private void Start()
         {
-            CreateBoardModule = GetComponent<CreateBoardModule>();
+            createBoardModule = GetComponent<CreatorBoard>();
             mouseHandler = GetComponent<MouseHandler>();
-
-            boards = CreateBoardModule.CreateBoard();
-            currentStage = StageState.Start;
+            blockPactory = GetComponent<BlockPactory>();
+            uI_Controller = GetComponent<UI_Controller>();
 
             BoardInit();
+
+            currentStage = StageState.Start;
         }
 
         private void Update()
         {
+            //현재 상태가 초이스 일때만 블록간에 교체가 가능
             if (currentStage == StageState.Choice)
             {
                 mouseHandler.MouseUpdate();
@@ -39,6 +46,10 @@ namespace JP
 
         void BoardInit()
         {
+            //보드 생성
+            boards = createBoardModule.CreateBoard();
+
+            //주변 보드들을 할당
             for (int i = 0; i < boards.Count; ++i)
             {
                 for (int j = 0; j < boards[i].Count; ++j)
@@ -48,89 +59,85 @@ namespace JP
                         //아래
                         if (2 + i > j)
                         {
-                            boards[i][j].AroundBoard.Add(AroundPosition.Down, boards[i][j + 1]);
+                            boards[i][j].AroundAdd(AroundPosition.Down, boards[i][j + 1]);
                         }
 
                         //왼쪽 아래
                         if (i >= 1 && 2 + i != j)
                         {
-                            boards[i][j].AroundBoard.Add(AroundPosition.LeftDown, boards[i - 1][j]);
+                            boards[i][j].AroundAdd(AroundPosition.LeftDown, boards[i - 1][j]);
                         }
 
                         //오른쪽 아래
-                        boards[i][j].AroundBoard.Add(AroundPosition.RightDown, boards[i + 1][ j + 1]);
+                        boards[i][j].AroundAdd(AroundPosition.RightDown, boards[i + 1][ j + 1]);
 
                         //왼쪽 위
                         if (i >= 1 && j >= 1)
                         {
-                            boards[i][j].AroundBoard.Add(AroundPosition.LeftUp, boards[i - 1][j - 1]);
+                            boards[i][j].AroundAdd(AroundPosition.LeftUp, boards[i - 1][j - 1]);
                         }
 
                         //오른쪽 위
-                        boards[i][j].AroundBoard.Add(AroundPosition.RightUp, boards[i + 1][j]);
+                        boards[i][j].AroundAdd(AroundPosition.RightUp, boards[i + 1][j]);
                     }
                     else if (i > 3)
                     {
                         //아래
                         if (8 - i > j)
                         {
-                            boards[i][j].AroundBoard.Add(AroundPosition.Down, boards[i][j + 1]);
+                            boards[i][j].AroundAdd(AroundPosition.Down, boards[i][j + 1]);
                         }
 
                         //왼쪽 아래
-                        boards[i][j].AroundBoard.Add(AroundPosition.LeftDown, boards[i - 1][ j + 1]);
+                        boards[i][j].AroundAdd(AroundPosition.LeftDown, boards[i - 1][ j + 1]);
 
                         //오른쪽 아래
                         if (i != 6 && 8 != i + j)
                         {
-                            boards[i][j].AroundBoard.Add(AroundPosition.RightDown, boards[i + 1][ j]);
+                            boards[i][j].AroundAdd(AroundPosition.RightDown, boards[i + 1][ j]);
                         }
 
                         //오른쪽 위
                         if (i != 6 && j != 0)
                         {
-                            boards[i][j].AroundBoard.Add(AroundPosition.RightUp, boards[i + 1][ j - 1]);
+                            boards[i][j].AroundAdd(AroundPosition.RightUp, boards[i + 1][ j - 1]);
                         }
 
                         //왼쪽 위
-                        boards[i][j].AroundBoard.Add(AroundPosition.LeftUp, boards[i - 1][ j]);
+                        boards[i][j].AroundAdd(AroundPosition.LeftUp, boards[i - 1][ j]);
                     }
                     else
                     {
-                        //위
+                        //위 대각선
                         if (0 != j)
                         {
-                            boards[i][j].AroundBoard.Add(AroundPosition.RightUp, boards[i + 1][j - 1]);
-                            boards[i][j].AroundBoard.Add(AroundPosition.LeftUp, boards[i - 1][j - 1]);
+                            boards[i][j].AroundAdd(AroundPosition.RightUp, boards[i + 1][j - 1]);
+                            boards[i][j].AroundAdd(AroundPosition.LeftUp, boards[i - 1][j - 1]);
                         }
 
-                        //아래
+                        //아래 대각선
                         if (5 != j)
                         {
-                            boards[i][j].AroundBoard.Add(AroundPosition.LeftDown, boards[i - 1][j]);
-                            boards[i][j].AroundBoard.Add(AroundPosition.Down, boards[i][j + 1]);
-                            boards[i][j].AroundBoard.Add(AroundPosition.RightDown, boards[i + 1][j]);
+                            boards[i][j].AroundAdd(AroundPosition.LeftDown, boards[i - 1][j]);
+                            boards[i][j].AroundAdd(AroundPosition.Down, boards[i][j + 1]);
+                            boards[i][j].AroundAdd(AroundPosition.RightDown, boards[i + 1][j]);
                         }
                     }
 
                     //위
                     if (j != 0)
                     {
-                        boards[i][j].AroundBoard.Add(AroundPosition.Up, boards[i][j - 1]);
+                        boards[i][j].AroundAdd(AroundPosition.Up, boards[i][j - 1]);
                     }
 
-                    //블럭 설정
-                    Block currentBlock = Instantiate(bloks[Random.Range(0, bloks.Count)]).transform.GetComponent<Block>();
-                    Notice notice = new();
-                    notice.registerObserver(GetComponent<IObserver>());
-                    currentBlock.SetNotice(notice);
-
-                    boards[i][j].MoveBlock(currentBlock);
+                    //블록생성 및 보드로 이동
+                    boards[i][j].MoveBlock(blockPactory.GetBlock(Random.Range(0, (int)BlockType.Block_End)));
                 }
             }
         }
 
-        public void recive(string msg,  BoardPosition boardPosition)
+        //블럭에 메세지를 받음
+        public void recive(string msg, Vector2 boardPosition)
         {
             if (msg == "MoveArrive")
             {
@@ -139,13 +146,14 @@ namespace JP
                 {
                     ++MoveCount;
 
+                    //모든 블럭이 도착시 게임 실행
                     if (MoveCount == 29)
                     {
-                        StartCoroutine(CheckBoard());
+                        StartCoroutine(CreateBlock());
                         MoveCount = 0;
                     }
                 }
-                //움직일 말을 선택하는 상태
+                //움직일 블럭을 선택하는 상태
                 else if (currentStage == StageState.Choice)
                 {
                     ++MoveCount;
@@ -154,41 +162,25 @@ namespace JP
                     {
                         MoveCount = 0;
 
-                        BoardPosition firstBoardPosition = mouseHandler.GetFirstBoardPosition();
-                        Board firstBoard = boards[firstBoardPosition.x][firstBoardPosition.y];
+                        //mouseHandler에서 움직인 블럭들에 정보를 토대로 검사를 실시
+                        Vector2 firstBoardPosition = mouseHandler.GetFirstBoardPosition();
+                        Board firstBoard = boards[(int)firstBoardPosition.x][(int)firstBoardPosition.y];
 
-                        BoardPosition secondBoardPosition = mouseHandler.GetSecondBoardPosition();
-                        Board secondBoard = boards[secondBoardPosition.x][secondBoardPosition.y];
+                        Vector2 secondBoardPosition = mouseHandler.GetSecondBoardPosition();
+                        Board secondBoard = boards[(int)secondBoardPosition.x][(int)secondBoardPosition.y];
 
-                        int firstCainNum = CheckBoardCainNum(firstBoard);
-                        int secondCainNum = CheckBoardCainNum(secondBoard);
-
-                        //체인이 둘다 4개 이하 들어감 
-                        if (firstCainNum < 4 && secondCainNum < 4)
+                        //Score점수가 0이라면 점수가 다시 교환
+                        if(CheckRemoveScore() == 0)
                         {
-                            //마지막으로 수직도 확인
-                            if(CheckBoardVerticalNum(firstBoard) < 3 && CheckBoardVerticalNum(secondBoard) < 3)
-                            {
-                                firstBoard.SwapBlock(secondBoard);
-                                currentStage = StageState.ReChange;
-                                return;
-                            }
+                            firstBoard.SwapBlock(secondBoard);
+                            currentStage = StageState.ReChange;
+                            return;
                         }
 
-                        //삭제 가능할 시 삭제
-                        if (firstCainNum >= 4)
-                        {
-                            BoardRemoveStart(firstBoard);
-                            currentStage = StageState.Wait;
-                        }
-                        
-                        if (secondCainNum >= 4)
-                        {
-                            BoardRemoveStart(secondBoard);
-                            currentStage = StageState.Wait;
-                        }
-
-                        StartCoroutine(CheckBoard());
+                        --leftMove;
+                        currentStage = StageState.Wait;
+                        uI_Controller.UpdateMove(leftMove);
+                        StartCoroutine(CreateBlock());
                     }
                 }
                 //바뀌기를 기다림
@@ -205,57 +197,80 @@ namespace JP
             }
         }
 
-        public void RemoveCheck()
+        //삭제 가능한 블록이 있는지 체크 후 스테이지 상태를 변경
+        public void CheckStage()
         {
-            bool cainRemovePossible = false;
-            bool verticalRemovePossible = false;
-
-            //체인 먼저 확인
-            for (int i = 0; i < boards.Count; ++i)
-            {
-                for (int j = 0; j < boards[i].Count; ++j)
-                {
-                    if(CheckBoardCainNum(boards[i][j]) >= 4)
-                    {
-                        cainRemovePossible = true;
-                        BoardRemoveStart(boards[i][j]);
-                    }
-                }
-            }
-
-            //체인검사를 실행해도 안나오면 직선이 3개이상 이어진것을 확인
-            for (int i = 0; i < boards.Count; ++i)
-            {
-                for (int j = 0; j < boards[i].Count; ++j)
-                {
-                    if (CheckBoardVerticalNum(boards[i][j]) >= 3)
-                    {
-                        verticalRemovePossible = true;
-                        BoardRemoveStart(boards[i][j]);
-                    }
-                }
-            }
-            
             //모든 검사에도 삭제할 수 있는 블럭이 없다면 Choice로 다시 넘어감
-            if(!cainRemovePossible && !verticalRemovePossible)
+            if (CheckRemoveScore() == 0)
             {
+                //남은 움직임이 없으면 게임 종료
+                if (leftMove == 0)
+                {
+                    uI_Controller.GameOver(currentScore);
+                    currentStage = StageState.GameOver;
+                    return;
+                }
+
                 currentStage = StageState.Choice;
             }
-            //삭제할 블럭이 있다면 기다림
+            //삭제를 진행했다면 다시 블럭들을 추가
             else
             {
                 currentStage = StageState.Wait;
-                StartCoroutine(CheckBoard());
+                StartCoroutine(CreateBlock());
             }
         }
 
-        void BoardRemoveStart(Board board)
+        //전체 보드를 검사하여 삭제할 블럭들 삭제, 삭제한 점수 return
+        public int CheckRemoveScore()
         {
-            board.RemoveStart();
-            ReleseCain();
+            int removeScore = 0;
+
+            //체인 검사
+            for (int i = 0; i < boards.Count; ++i)
+            {
+                for (int j = 0; j < boards[i].Count; ++j)
+                {
+                    if (GetBoardCainNum(boards[i][j]) >= 4)
+                    {
+                        removeScore = GetRemoveScoreOrRemoveBlock(boards[i][j]);
+                    }
+                }
+            }
+
+            //직선 검사
+            for (int i = 0; i < boards.Count; ++i)
+            {
+                for (int j = 0; j < boards[i].Count; ++j)
+                {
+                    if (GetBoardVerticalNum(boards[i][j]) >= 3)
+                    {
+                        removeScore = GetRemoveScoreOrRemoveBlock(boards[i][j]);
+                    }
+                }
+            }
+
+            return removeScore;
         }
 
-        int CheckBoardCainNum(Board board)
+        //블럭들 삭제 및 점수return
+        int GetRemoveScoreOrRemoveBlock(Board board)
+        {
+            int removeScore = GetBoardCainNum(board);
+
+            BlockType blockType = board.GetBlockType();
+            board.RemoveStart();
+
+            currentScore += removeScore;
+            uI_Controller.UpdateScore(currentScore);
+            blockPactory.CheckBlock((int)blockType);
+            ReleseCain();
+
+            return removeScore;
+        }
+
+        //체인으로 연결된 블럭수 반환
+        int GetBoardCainNum(Board board)
         {
             int num = board.CheckCainNum();
             ReleseCain();
@@ -263,7 +278,8 @@ namespace JP
             return num;
         }
 
-        int CheckBoardVerticalNum(Board board)
+        //직선으로 연결된 블럭수 반환
+        int GetBoardVerticalNum(Board board)
         {
             int num = board.CheckVerticalNum();
             ReleseCain();
@@ -282,38 +298,20 @@ namespace JP
             }
         }
 
-        IEnumerator CheckBoard()
+        //모든 보드에 블럭이 채워질때까지 블록을 생성
+        IEnumerator CreateBlock()
         {
-            bool isStart = true;
-
             while (true)
             {
                 yield return null;
 
+                //블럭들의 이동
                 for (int i = 0; i < boards.Count; ++i)
                 {
                     for (int j = boards[i].Count - 1; j >= 0; --j)
                     {
                         boards[i][j].CheckVerticalMove();
                     }
-                }
-
-                if (isStart && boards[3][0].GetBoardState() == BoardState.Empty)
-                {
-                    Block currentBlock = Instantiate(bloks[Random.Range(0, bloks.Count)],
-                    boards[3][0].transform.position + new Vector3(0, 6f,0),
-                    boards[3][0].transform.rotation).transform.GetComponent<Block>();
-
-                    Notice notice = new Notice();
-                    notice.registerObserver(GetComponent<IObserver>());
-                    currentBlock.SetNotice(notice);
-
-                    boards[3][0].MoveBlock(currentBlock);
-                    isStart = false;
-                }
-                else if (boards[3][0].GetBoardState() != BoardState.ArriveWait)
-                {
-                    isStart = true;
                 }
 
                 for (int i = 0; i < boards.Count; ++i)
@@ -324,6 +322,16 @@ namespace JP
                     }
                 }
 
+                //맨위에 있는 보드가 비어 있다면 블럭을 할당
+                if (boards[3][0].GetBoardState() == BoardState.Empty)
+                {
+                    Block currentBlock = blockPactory.GetBlock(Random.Range(0, (int)BlockType.Block_End));
+                    currentBlock.transform.position = boards[3][0].transform.position + new Vector3(0, 6f, 0);
+
+                    boards[3][0].MoveBlock(currentBlock);
+                }
+
+                //모든 블럭이 채워졌는지 확인
                 bool IsKeepBlock = true;
 
                 for (int i = 0; i < boards.Count; ++i)
@@ -340,7 +348,7 @@ namespace JP
 
                 if (IsKeepBlock)
                 {
-                    RemoveCheck();
+                    CheckStage();
                     yield break;
                 }
             }

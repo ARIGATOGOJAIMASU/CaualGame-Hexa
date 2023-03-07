@@ -8,7 +8,7 @@ namespace JP
     {
         List<IObserver> observers;
 
-        public void notifyObserver(string msg, BoardPosition boardPosition)
+        public void notifyObserver(string msg, Vector2 boardPosition)
         {
             for(int i = 0; i < observers.Count; ++i)
             {
